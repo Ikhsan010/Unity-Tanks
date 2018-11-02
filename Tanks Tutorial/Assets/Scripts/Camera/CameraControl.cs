@@ -6,7 +6,7 @@ public class CameraControl : MonoBehaviour
                                             //doesn't move instantly, dampens the movement a bit
     public float m_ScreenEdgeBuffer = 4f;   //makes sure the tanks don't zoom out of the camera view
     public float m_MinSize = 6.5f;      //makes sure it doesn't zoom into a tiny screen, minimum size
-    /*[HideInInspector]*/ public Transform[] m_Targets; 
+    [HideInInspector] public Transform[] m_Targets; 
 
 
     private Camera m_Camera;                        

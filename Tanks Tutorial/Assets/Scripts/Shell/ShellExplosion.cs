@@ -2,74 +2,88 @@
 
 public class ShellExplosion : MonoBehaviour
 {
-    public LayerMask m_TankMask;
-    public ParticleSystem m_ExplosionParticles;       
-    public AudioSource m_ExplosionAudio;              
-    public float m_MaxDamage = 100f;                  
-    public float m_ExplosionForce = 1000f;            
-    public float m_MaxLifeTime = 2f;                  
-    public float m_ExplosionRadius = 5f;              
+    public LayerMask m_TankMask;                        // Used to filter what the explosion affects, this should be set to "Players".
+    public ParticleSystem m_ExplosionParticles;         // Reference to the particles that will play on explosion.
+    public AudioSource m_ExplosionAudio;                // Reference to the audio that will play on explosion.
+    public float m_MaxDamage = 100f;                    // The amount of damage done if the explosion is centred on a tank.
+    public float m_ExplosionForce = 1000f;              // The amount of force added to a tank at the centre of the explosion.
+    public float m_MaxLifeTime = 2f;                    // The time in seconds before the shell is removed.
+    public float m_ExplosionRadius = 5f;                // The maximum distance away from the explosion tanks can be and are still affected.
 
 
     private void Start()
     {
+        // If it isn't destroyed by then, destroy the shell after it's lifetime.
         Destroy(gameObject, m_MaxLifeTime);
     }
 
 
     private void OnTriggerEnter(Collider other)
     {
-        // Find all the tanks in an area around the shell and damage them.
+        // Collect all the colliders in a sphere from the shell's current position to a radius of the explosion radius.
         Collider[] colliders = Physics.OverlapSphere(transform.position, m_ExplosionRadius, m_TankMask);
 
+        // Go through all the colliders...
         for (int i = 0; i < colliders.Length; i++)
         {
+            // ... and find their rigidbody.
             Rigidbody targetRigidbody = colliders[i].GetComponent<Rigidbody>();
-            if (!targetRigidbody) //if there's nothing there, continue onto the next collider
+
+            // If they don't have a rigidbody, go on to the next collider.
+            if (!targetRigidbody)
                 continue;
 
+            // Add an explosion force.
             targetRigidbody.AddExplosionForce(m_ExplosionForce, transform.position, m_ExplosionRadius);
 
-            //cause damage to the tank
+            // Find the TankHealth script associated with the rigidbody.
             TankHealth targetHealth = targetRigidbody.GetComponent<TankHealth>();
 
+            // If there is no TankHealth script attached to the gameobject, go on to the next collider.
             if (!targetHealth)
                 continue;
 
-            float damage = CalculateDamage(targetRigidbody.position); //getting position from rigidbody
+            // Calculate the amount of damage the target should take based on it's distance from the shell.
+            float damage = CalculateDamage(targetRigidbody.position);
 
-            //now we have the damage, then must apply the damage
+            // Deal this damage to the tank.
             targetHealth.TakeDamage(damage);
         }
 
+        // Unparent the particles from the shell.
         m_ExplosionParticles.transform.parent = null;
 
+        // Play the particle system.
         m_ExplosionParticles.Play();
 
+        // Play the explosion sound effect.
         m_ExplosionAudio.Play();
 
-        Destroy(m_ExplosionParticles.gameObject, m_ExplosionParticles.main.duration); //destroyed the explosion
-                              //remove the shell
+        // Once the particles have finished, destroy the gameobject they are on.
+        Destroy(m_ExplosionParticles.gameObject, m_ExplosionParticles.duration);
+
+        // Destroy the shell.
         Destroy(gameObject);
     }
 
 
     private float CalculateDamage(Vector3 targetPosition)
     {
-        // Calculate the amount of damage a target should take based on it's position.
-        // Create a vector from the target to the shell
+        // Create a vector from the shell to the target.
         Vector3 explosionToTarget = targetPosition - transform.position;
 
+        // Calculate the distance from the shell to the target.
         float explosionDistance = explosionToTarget.magnitude;
 
+        // Calculate the proportion of the maximum distance (the explosionRadius) the target is away.
         float relativeDistance = (m_ExplosionRadius - explosionDistance) / m_ExplosionRadius;
 
+        // Calculate damage as this proportion of the maximum possible damage.
         float damage = relativeDistance * m_MaxDamage;
 
-        //make sure the damage is not negative
-        damage = Mathf.Max(0f, m_MaxDamage); //if negative, set it to 0
+        // Make sure that the minimum damage is always 0.
+        damage = Mathf.Max(0f, damage);
 
         return damage;
-
     }
 }
